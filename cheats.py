@@ -1,16 +1,14 @@
+import requests
+import win32api
 import time
 import pymem
-import requests 
-import win32api
 
-try:
+try:    
     hazedumper = requests.get("https://raw.githubusercontent.com/frk1/hazedumper/master/csgo.json").json()
-except requests.RequestException:
+except (ValueError, requests.RequestException):
     exit("[-] Failed to fetch the latests offsets from hazedumper!")
 
-# Open CSGO in pyMem
 csgo = pymem.Pymem("csgo.exe")
-# Load client.dll and get the module base address 
 module_base = pymem.process.module_from_name(csgo.process_handle, "client.dll").lpBaseOfDll
 
 if not module_base:
@@ -31,12 +29,12 @@ class CEntity:
         :return: Entity's Health
         """
         return csgo.read_int(self.address + hazedumper["netvars"]["m_iHealth"])
-
+    
     def is_alive(self) -> bool:
         """ Checks to see if the current entity is alive
         :return: True if the entity is alive
         """
-        return self.get_health() != 0
+        return self.get_health() > 0
 
     def is_dormant(self) -> bool:
         """ Checks to see if the player is AFK / Too far away
@@ -51,7 +49,7 @@ class CEntity:
         3 -> Counter-terrorist
         """
         return csgo.read_int(self.address + hazedumper["netvars"]["m_iTeamNum"])
-
+    
     def spot(self) -> None:
         """ Used to set the entity as spotted on the radar
         """
@@ -63,12 +61,18 @@ class CEntity:
         """
         return csgo.read_bool(self.address + hazedumper["netvars"]["m_bIsDefusing"])
 
-    def glow(self, r: float, g:float, b: float, a:float = 1):
+    def glow(self, r: float, g:float, b: float, a:float = 1) -> None:
         """ Applies glow to an entity
+        :param r: Red value
+        :param g: Green value
+        :param b: Blue value
+        :param a: Alpha value
         """
         glow_manager = csgo.read_int(module_base + hazedumper["signatures"]["dwGlowObjectManager"])
         entity_glow = csgo.read_int(self.address + hazedumper["netvars"]["m_iGlowIndex"])
         entity = glow_manager + entity_glow * 0x38
+        if entity +  0x8 < 0:
+            return
         csgo.write_float(entity +  0x8, float(r))  # R
         csgo.write_float(entity + 0xC, float(g))   # G
         csgo.write_float(entity + 0x10, float(b))  # B
@@ -87,10 +91,16 @@ class CEntity:
             self.glow(0, 1, 0) # Glow green
 
 class LocalPlayer(CEntity):
+    """ Class used to monitor the localplayer
+    """
     def update(self):
+        """ updates the localplayers memory address
+        """
         self.address = csgo.read_int(module_base + hazedumper["signatures"]["dwLocalPlayer"])
 
 def main() -> None:
+    """ Starts the CSGO Cheats
+    """
     localplayer = LocalPlayer(None)
     while True:
         localplayer.update()
@@ -99,19 +109,17 @@ def main() -> None:
         while localplayer.address <= 0: # If the localplayer address is not a valid
             localplayer.update()
             time.sleep(1.5)
-        # Loop through all player entities
         for i in range(0, 32):
             if not localplayer.is_alive():
                 break
             entity = csgo.read_int(module_base + hazedumper["signatures"]["dwEntityList"] + i * 0x10)
-            if not entity or entity <= 0: # If the entity is not a valid memory address
+            if entity <= 0 or entity is None: # If the entity is not a valid memory address
                 continue
             c_entity = CEntity(entity)
-            if not c_entity.is_alive() or c_entity.is_dormant(): # If entity is either dead or AFK / Too far away
-                continue 
+            if c_entity is None or not c_entity.is_alive() or c_entity.is_dormant(): # If entity is either dead or AFK / Too far away
+                continue
             if c_entity.get_team_number() == localplayer.get_team_number():
                 c_entity.glow(0, 0, 1) # Glow blue
-                continue # Don't need to spot them on the radar
             elif c_entity.is_defusing():
                 # Glow purple
                 c_entity.glow(1, 0, 1)
@@ -120,7 +128,6 @@ def main() -> None:
                 c_entity.glow_by_health()
             c_entity.spot()
         time.sleep(.05)
-    print("[*] Stopping CSGO cheats")       
 
 if __name__ == '__main__':
     print("[*] Started CSGO cheats")
