@@ -18,6 +18,7 @@ C:\Users\DrewQ\pymem-csgo>pip3 install -r requirements.txt
 * Enemys have different glow colors determined by their health
 * Purple Glow for players that are defusing the bomb
 * Radar Hack
+* Automated Offsets (thx hazedumper)
 
 ## Execution
 ```
