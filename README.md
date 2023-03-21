@@ -1,6 +1,7 @@
 # pymem-csgo
 A CS:GO Cheat Coded in Python with Glow and Radar Hacks
 ![glow](/images/glow_preview.jpg)
+![bomb](/images/bomb_preview.jpg)
 ## Installation
 Download [Python3](https://www.python.org/downloads/)
 ```
