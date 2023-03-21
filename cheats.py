@@ -25,17 +25,6 @@ class CEntity:
         :param address: Memory address of entity
         """
         self.address = address
-    
-    def glow_by_health(self) -> None:
-        """ Glows the entity depending on how much health they have 
-        """
-        entity_health = self.get_health()
-        if entity_health < 30:
-            self.glow(1, 0, 0) # Glow Red
-        elif entity_health < 50:
-            self.glow(1, 1, 0) # Glow yellow
-        else:
-            self.glow(0, 1, 0) # Glow green
 
     def get_health(self) -> int:
         """ Fetches the entitys current health
@@ -54,18 +43,7 @@ class CEntity:
         :return: True if the current entity is dormant
         """
         return csgo.read_bool(self.address + hazedumper["signatures"]["m_bDormant"])
-
-    def is_defusing(self) -> bool:
-        """ Checks to see if the current player is defusing
-        :return: True if the player is defusing
-        """
-        return csgo.read_bool(self.address + hazedumper["netvars"]["m_bIsDefusing"])
-
-    def spot(self) -> None:
-        """ Used to set the entity as spotted on the radar
-        """
-        csgo.write_bool(self.address + hazedumper["netvars"]["m_bSpotted"], True)
-
+    
     def get_team_number(self) -> int:
         """ Gets the current entities team number
         :return int: Team number
@@ -73,6 +51,17 @@ class CEntity:
         3 -> Counter-terrorist
         """
         return csgo.read_int(self.address + hazedumper["netvars"]["m_iTeamNum"])
+
+    def spot(self) -> None:
+        """ Used to set the entity as spotted on the radar
+        """
+        csgo.write_bool(self.address + hazedumper["netvars"]["m_bSpotted"], True)
+
+    def is_defusing(self) -> bool:
+        """ Checks to see if the current player is defusing
+        :return: True if the player is defusing
+        """
+        return csgo.read_bool(self.address + hazedumper["netvars"]["m_bIsDefusing"])
 
     def glow(self, r: float, g:float, b: float, a:float = 1):
         """ Applies glow to an entity
@@ -86,6 +75,16 @@ class CEntity:
         csgo.write_float(entity + 0x14, float(a))  # Alpha
         csgo.write_bool(entity + 0x28, True)       # Enable glow
 
+    def glow_by_health(self) -> None:
+        """ Glows the entity depending on how much health they have 
+        """
+        entity_health = self.get_health()
+        if entity_health < 30:
+            self.glow(1, 0, 0) # Glow Red
+        elif entity_health < 50:
+            self.glow(1, 1, 0) # Glow yellow
+        else:
+            self.glow(0, 1, 0) # Glow green
 
 class LocalPlayer(CEntity):
     def update(self):
@@ -108,7 +107,7 @@ def main() -> None:
             if not entity or entity <= 0: # If the entity is not a valid memory address
                 continue
             c_entity = CEntity(entity)
-            if not c_entity.is_alive() or c_entity.is_dormant(): # If entity is either dead, nonexistent or AFK / Too far away
+            if not c_entity.is_alive() or c_entity.is_dormant(): # If entity is either dead or AFK / Too far away
                 continue 
             if c_entity.get_team_number() == localplayer.get_team_number():
                 c_entity.glow(0, 0, 1) # Glow blue
@@ -122,7 +121,7 @@ def main() -> None:
             c_entity.spot()
         time.sleep(.05)
     print("[*] Stopping CSGO cheats")       
-    
+
 if __name__ == '__main__':
     print("[*] Started CSGO cheats")
     main()
