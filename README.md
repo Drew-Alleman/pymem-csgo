@@ -1,5 +1,10 @@
 # pymem-csgo
 A CS:GO Cheat Coded in Python with Glow and Radar Hacks
+
+## Code Showcase
+A youtube video showcasing how the code works and gameplay! <br>
+[![showcase ](https://img.youtube.com/vi/-UTIOLqSZbM/0.jpg)](https://www.youtube.com/watch?v=-UTIOLqSZbM)
+## Preview
 ![glow](/images/glow_preview.jpg)
 ![bomb](/images/bomb_preview.jpg)
 ## Installation
