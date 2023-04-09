@@ -1,6 +1,18 @@
 # pymem-csgo
 A CS:GO Cheat Coded in Python with Glow and Radar Hacks
 
+## Not Working?
+If the game recently updated and hazedumper doesn't have the latest offsets yet replace the following code in ```cheats.py``` to use the latest blazedumper offsets.
+
+### Old
+```python
+hazedumper = requests.get("https://raw.githubusercontent.com/frk1/hazedumper/master/csgo.json").json()
+```
+### New
+```python
+hazedumper = requests.get("https://raw.githubusercontent.com/Akandesh/blazedumper/master/csgo.json").json()
+```
+
 ## Code Showcase
 A youtube video showcasing how the code works and gameplay! <br>
 [![showcase ](https://img.youtube.com/vi/-UTIOLqSZbM/0.jpg)](https://www.youtube.com/watch?v=-UTIOLqSZbM)
