@@ -3,12 +3,18 @@ import win32api
 import time
 import pymem
 
+VERSION = "1.0.1"
+
 try:    
     hazedumper = requests.get("https://raw.githubusercontent.com/frk1/hazedumper/master/csgo.json").json()
 except (ValueError, requests.RequestException):
     exit("[-] Failed to fetch the latests offsets from hazedumper!")
 
-csgo = pymem.Pymem("csgo.exe")
+try:
+    csgo = pymem.Pymem("csgo.exe")
+except pymem.exception.ProcessNotFound:
+    exit("[-] Failed to start cheats CS:GO is not currently running")
+
 module_base = pymem.process.module_from_name(csgo.process_handle, "client.dll").lpBaseOfDll
 
 if not module_base:
@@ -18,6 +24,16 @@ class CEntity:
     """ CSGO Entity class 
     Used to control and monitor player entites in CSGO
     """
+
+    def __bool__(self) -> bool:
+        """ Checks to see if the current entity is valid
+        1. Checks to see if the current memory address is valid
+        2. Checks to see if the current entity is alive
+        3. Checks to see if the current entity is dormant
+        :return: True if the entity is valid
+        """
+        return self.address > 0 and self.is_alive() and not self.is_dormant()
+
     def __init__(self, address) -> None:
         """ Defines a CSGO Player Entity
         :param address: Memory address of entity
@@ -77,7 +93,8 @@ class CEntity:
         csgo.write_float(entity + 0xC, float(g))   # G
         csgo.write_float(entity + 0x10, float(b))  # B
         csgo.write_float(entity + 0x14, float(a))  # Alpha
-        csgo.write_bool(entity + 0x28, True)       # Enable glow
+        csgo.write_int(entity + 0x28, 1)           # m_bRenderWhenOccluded
+        csgo.write_int(entity + 0x29, 0)           # m_bRenderWhenUnoccluded
 
     def glow_by_health(self) -> None:
         """ Glows the entity depending on how much health they have 
@@ -98,34 +115,45 @@ class LocalPlayer(CEntity):
         """
         self.address = csgo.read_int(module_base + hazedumper["signatures"]["dwLocalPlayer"])
 
+    def update_or_loop(self) -> None:
+        """ Updates the localplayer address, if the update
+        returns an invalid address the function will loop and sleep
+        until a valid memory address if found
+        """
+        self.update()
+        while self.address <= 0:
+            self.update()
+            time.sleep(1.5)
+
+    def glow_ent(self, c_entity: CEntity) -> None:
+        """ Glow the specifed entity to the localplayer
+        :param c_entity: Entity to glow 
+        """
+        if c_entity.get_team_number() == self.get_team_number():
+            c_entity.glow(0, 0, 1) # Glow blue
+        elif c_entity.is_defusing():
+            c_entity.glow(1, 0, 1) # Glow purple
+        else:
+            c_entity.glow_by_health()  # Glow depending on there health
+    
 def main() -> None:
     """ Starts the CSGO Cheats
     """
     localplayer = LocalPlayer(None)
     while True:
-        localplayer.update()
         if win32api.GetKeyState(117): # Kill switch (F6)
             break
-        while localplayer.address <= 0: # If the localplayer address is not a valid
-            localplayer.update()
-            time.sleep(1.5)
-        for i in range(0, 32):
+        localplayer.update_or_loop() # blocks
+        for i in range(1, 32):
             if not localplayer.is_alive():
                 break
-            entity = csgo.read_int(module_base + hazedumper["signatures"]["dwEntityList"] + i * 0x10)
-            if entity <= 0 or entity is None: # If the entity is not a valid memory address
+            entity_address = csgo.read_int(module_base + hazedumper["signatures"]["dwEntityList"] + i * 0x10)
+            if entity_address <= 0: # If the entity is not a valid memory address
                 continue
-            c_entity = CEntity(entity)
-            if c_entity is None or not c_entity.is_alive() or c_entity.is_dormant(): # If entity is either dead or AFK / Too far away
+            c_entity = CEntity(entity_address)
+            if not bool(c_entity):
                 continue
-            if c_entity.get_team_number() == localplayer.get_team_number():
-                c_entity.glow(0, 0, 1) # Glow blue
-            elif c_entity.is_defusing():
-                # Glow purple
-                c_entity.glow(1, 0, 1)
-            else:
-                # Glow depending on there health
-                c_entity.glow_by_health()
+            localplayer.glow_ent(c_entity)
             c_entity.spot()
         time.sleep(.05)
 
